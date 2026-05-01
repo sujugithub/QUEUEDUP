@@ -1,0 +1,302 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "QUEUEDUP";
+}
+
+<header class="site-header">
+    <a class="header-logo" href="/"><img src="/images/logo.png" alt="QUEUEDUP" class="header-logo-img" /></a>
+    <div class="header-actions">
+        @if (Model.SpotifyConnected)
+        {
+            <span class="spotify-user-badge">@Model.SpotifyUser</span>
+            <a href="/Index?handler=LogoutSpotify" class="spotify-logout-btn">DISCONNECT</a>
+        }
+        else
+        {
+            <a href="/Index?handler=LoginWithSpotify" class="spotify-connect-btn">CONNECT SPOTIFY</a>
+        }
+    </div>
+</header>
+
+<main class="stats-main">
+    @if (!Model.SpotifyConnected)
+    {
+        <div class="login-prompt">
+            <div class="login-left">
+                <span class="stats-eyebrow">SPOTIFY STATS</span>
+                <h1 class="login-title">YOUR<br>MUSIC<br>STATS</h1>
+                <p class="login-sub">Real-time insights into your listening habits. Updated daily.</p>
+                <a href="/Index?handler=LoginWithSpotify" class="login-btn">LOGIN WITH SPOTIFY</a>
+                <p class="login-legal">By logging in, you agree to our privacy policy</p>
+            </div>
+            <div class="login-right">
+                <div class="login-feature">
+                    <span class="feature-num">01</span>
+                    <div>
+                        <strong class="feature-title">YOUR OWN CHARTS</strong>
+                        <p class="feature-desc">View your most listened tracks, artists and genres and switch between 3 different time periods. Your data is updated approximately every day.</p>
+                    </div>
+                </div>
+                <div class="login-feature">
+                    <span class="feature-num">02</span>
+                    <div>
+                        <strong class="feature-title">COMPARE TO LAST VISIT</strong>
+                        <p class="feature-desc">See how your personal ranking changes over time, indicated by arrows compared to your last visit.</p>
+                    </div>
+                </div>
+                <div class="login-feature">
+                    <span class="feature-num">03</span>
+                    <div>
+                        <strong class="feature-title">CREATE PLAYLIST</strong>
+                        <p class="feature-desc">Create a playlist from your personal charts and listen to them directly in your Spotify app.</p>
+                    </div>
+                </div>
+                <div class="login-feature">
+                    <span class="feature-num">04</span>
+                    <div>
+                        <strong class="feature-title">RECENTLY PLAYED TRACKS</strong>
+                        <p class="feature-desc">Check out your recently played tracks with timestamps.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="stats-dashboard">
+            <div class="stats-header-row">
+                <div class="stats-title-block">
+                    <span class="stats-eyebrow">SPOTIFY STATS &mdash; @Model.SpotifyUser</span>
+                    <h1 class="stats-big-title">YOUR CHARTS</h1>
+                </div>
+                <div class="time-period-row" id="period-row">
+                    <button class="period-btn" data-period="4weeks">LAST 4 WEEKS</button>
+                    <button class="period-btn active" data-period="6months">LAST 6 MONTHS</button>
+                    <button class="period-btn" data-period="12months">LAST 12 MONTHS</button>
+                </div>
+            </div>
+            <div class="stats-tabs">
+                <button class="tab-btn active" data-tab="tracks">TOP TRACKS</button>
+                <button class="tab-btn" data-tab="artists">TOP ARTISTS</button>
+                <button class="tab-btn" data-tab="genres">TOP GENRES</button>
+                <button class="tab-btn" data-tab="recent">RECENTLY PLAYED</button>
+                <button class="tab-btn aura-tab-btn" data-tab="aura">MUSIC AURA</button>
+            </div>
+            <div class="stats-body">
+                <span id="stats-indicator" class="htmx-indicator stats-spinner"></span>
+                <div id="stats-content" class="stats-content"></div>
+            </div>
+        </div>
+    }
+</main>
+
+<section class="tickets-section">
+    <div class="tickets-header">
+        <span class="tickets-eyebrow">/ FIND TICKETS</span>
+        <h2 class="tickets-title">LIVE EVENTS</h2>
+    </div>
+
+    <div class="marquee-bar">
+        <div class="marquee-track">
+            <span>COLD CHISEL &nbsp;&mdash;&nbsp; TAME IMPALA &nbsp;&mdash;&nbsp; TAYLOR SWIFT &nbsp;&mdash;&nbsp; ARCTIC MONKEYS &nbsp;&mdash;&nbsp; BILLIE EILISH &nbsp;&mdash;&nbsp; THE WEEKND &nbsp;&mdash;&nbsp; FLUME &nbsp;&mdash;&nbsp; DOJA CAT &nbsp;&mdash;&nbsp; HARRY STYLES &nbsp;&mdash;&nbsp; CHAPPELL ROAN &nbsp;&mdash;&nbsp; TRAVIS SCOTT &nbsp;&mdash;&nbsp; RADIOHEAD &nbsp;&mdash;&nbsp; </span>
+            <span aria-hidden="true">COLD CHISEL &nbsp;&mdash;&nbsp; TAME IMPALA &nbsp;&mdash;&nbsp; TAYLOR SWIFT &nbsp;&mdash;&nbsp; ARCTIC MONKEYS &nbsp;&mdash;&nbsp; BILLIE EILISH &nbsp;&mdash;&nbsp; THE WEEKND &nbsp;&mdash;&nbsp; FLUME &nbsp;&mdash;&nbsp; DOJA CAT &nbsp;&mdash;&nbsp; HARRY STYLES &nbsp;&mdash;&nbsp; CHAPPELL ROAN &nbsp;&mdash;&nbsp; TRAVIS SCOTT &nbsp;&mdash;&nbsp; RADIOHEAD &nbsp;&mdash;&nbsp; </span>
+        </div>
+    </div>
+
+    <div class="search-section">
+        <div class="search-bar-row">
+            <div class="search-field-wrap">
+                <span class="search-prefix">/ SEARCH</span>
+                <div class="input-suggest-wrap">
+                    <input id="keyword-input" type="text" name="keyword"
+                        placeholder="ARTIST, TOUR..."
+                        class="search-input" autocomplete="off" spellcheck="false"
+                        hx-get="/Index?handler=Suggest"
+                        hx-target="#artist-suggestions"
+                        hx-swap="innerHTML"
+                        hx-trigger="input changed delay:300ms"
+                        hx-include="#keyword-input"
+                        hx-indicator="#search-indicator" />
+                    <div id="artist-suggestions" class="suggest-dropdown"></div>
+                </div>
+            </div>
+
+            <div class="search-divider"></div>
+
+            <div class="search-field-wrap">
+                <span class="search-prefix">@@ CITY</span>
+                <div class="input-suggest-wrap">
+                    <input id="city-input" type="text" name="city"
+                        placeholder="NEW YORK, LONDON..."
+                        class="search-input" autocomplete="off" spellcheck="false" />
+                    <div id="city-suggestions" class="suggest-dropdown"></div>
+                </div>
+            </div>
+
+            <span id="search-indicator" class="htmx-indicator search-spinner"></span>
+        </div>
+
+        @if (Model.SpotifyConnected && Model.TopArtists.Any())
+        {
+            <div class="spotify-artists-row">
+                <span class="spotify-label">YOUR TOP ARTISTS &mdash; CLICK TO SEARCH</span>
+                <div class="artist-chips">
+                    @foreach (var artist in Model.TopArtists)
+                    {
+                        <button class="artist-chip"
+                            hx-get="/Index?handler=Search&keyword=@Uri.EscapeDataString(artist)"
+                            hx-target="#events-container"
+                            hx-swap="innerHTML"
+                            hx-include="#city-input"
+                            hx-indicator="#search-indicator"
+                            data-artist="@artist">@artist</button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div id="events-container">
+        @await Html.PartialAsync("_EventsGrid", Model.Events)
+    </div>
+</section>
+
+<footer class="site-footer">
+    <div class="footer-inner">
+        <img src="/images/logo.png" alt="QUEUEDUP" class="footer-logo-img" />
+        <span class="footer-copy">&copy; 2026 QUEUEDUP. ALL RIGHTS RESERVED.</span>
+    </div>
+</footer>
+
+@section Scripts {
+<script>
+function qdCopyAura(btn) {
+    var text = btn.dataset.share || '';
+    if (!text) return;
+    (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+        .then(function () {
+            btn.textContent = 'COPIED';
+            setTimeout(function () { btn.textContent = 'COPY AURA'; }, 2000);
+        })
+        .catch(function () {
+            btn.textContent = 'COPIED';
+            setTimeout(function () { btn.textContent = 'COPY AURA'; }, 2000);
+        });
+}
+function qdSearchArtist(btn) {
+    var artist = btn.dataset.artist || '';
+    var kw = document.getElementById('keyword-input');
+    if (kw) kw.value = artist;
+    htmx.ajax('GET', '/Index?handler=Search', {
+        target: '#events-container',
+        swap: 'innerHTML',
+        indicator: '#search-indicator',
+        values: { keyword: artist, city: (document.getElementById('city-input') || {}).value || '' }
+    });
+}
+(function () {
+    const CITIES = ['New York','Los Angeles','Chicago','Houston','Phoenix','Philadelphia','San Antonio','San Diego','Dallas','San Jose','Austin','Jacksonville','Nashville','London','Sydney','Melbourne','Brisbane','Perth','Adelaide','Toronto','Vancouver','Montreal','Tokyo','Seoul','Singapore','Paris','Berlin','Amsterdam','Dublin','Barcelona','Madrid','Rome','Dubai','Mumbai','Hong Kong','Bangkok','Kuala Lumpur','Auckland'];
+
+    /* ---- STATS ---- */
+    let activeTab    = 'tracks';
+    let activePeriod = '6months';
+
+    function loadStats() {
+        const url = activeTab === 'recent'
+            ? '/Index?handler=RecentlyPlayed'
+            : activeTab === 'aura'
+            ? '/Index?handler=Aura'
+            : '/Index?handler=TopStats&tab=' + activeTab + '&timeRange=' + activePeriod;
+        htmx.ajax('GET', url, {
+            target: '#stats-content',
+            swap: 'innerHTML',
+            indicator: '#stats-indicator'
+        });
+    }
+
+    (document.querySelectorAll('.tab-btn') || []).forEach(function(btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+            activeTab = this.dataset.tab;
+            var periodRow = document.getElementById('period-row');
+            if (periodRow) periodRow.style.opacity = (activeTab === 'recent' || activeTab === 'aura') ? '0.3' : '1';
+            loadStats();
+        });
+    });
+
+    (document.querySelectorAll('.period-btn') || []).forEach(function(btn) {
+        btn.addEventListener('click', function () {
+            document.querySelectorAll('.period-btn').forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+            activePeriod = this.dataset.period;
+            if (activeTab !== 'recent') loadStats();
+        });
+    });
+
+    if (document.getElementById('stats-content')) loadStats();
+
+    /* ---- HTMX: re-process dynamically loaded stats content ---- */
+    document.body.addEventListener('htmx:afterSwap', function (e) {
+        if (e.detail && e.detail.target && e.detail.target.id === 'stats-content')
+            htmx.process(e.detail.target);
+    });
+
+    /* ---- TICKET SEARCH ---- */
+    function triggerSearch() {
+        htmx.ajax('GET', '/Index?handler=Search', {
+            target: '#events-container',
+            swap: 'innerHTML',
+            indicator: '#search-indicator',
+            values: {
+                keyword: document.getElementById('keyword-input').value,
+                city:    document.getElementById('city-input').value
+            }
+        });
+    }
+
+    function closeSuggestions() {
+        document.getElementById('artist-suggestions').innerHTML = '';
+        document.getElementById('city-suggestions').innerHTML  = '';
+    }
+
+    document.getElementById('city-input').addEventListener('input', function () {
+        var q      = this.value.toLowerCase().trim();
+        var target = document.getElementById('city-suggestions');
+        if (q.length < 1) { target.innerHTML = ''; return; }
+        var matches = CITIES.filter(function(c) { return c.toLowerCase().startsWith(q); }).slice(0, 6);
+        if (!matches.length) { target.innerHTML = ''; return; }
+        target.innerHTML = '<ul class="suggest-list">' +
+            matches.map(function(c) { return '<li class="suggest-item" data-value="' + c + '" data-type="city">' + c + '</li>'; }).join('') +
+            '</ul>';
+    });
+
+    ['keyword-input', 'city-input'].forEach(function(id) {
+        document.getElementById(id).addEventListener('keydown', function (e) {
+            if (e.key === 'Enter')  { closeSuggestions(); triggerSearch(); }
+            if (e.key === 'Escape') closeSuggestions();
+        });
+    });
+
+    /* suggest items: use mousedown + preventDefault so the input never loses
+       focus before we read the value — this fires before blur */
+    document.addEventListener('mousedown', function (e) {
+        var item = e.target.closest('.suggest-item');
+        if (!item) return;
+        e.preventDefault();
+        var val = item.dataset.value || item.textContent.trim();
+        if (item.dataset.type === 'city') document.getElementById('city-input').value    = val;
+        else                              document.getElementById('keyword-input').value = val;
+        closeSuggestions();
+        triggerSearch();
+    });
+
+    /* close dropdown when clicking anywhere outside the search fields */
+    document.body.addEventListener('click', function (e) {
+        if (!e.target.closest('.search-field-wrap')) closeSuggestions();
+    });
+
+}());
+</script>
+}

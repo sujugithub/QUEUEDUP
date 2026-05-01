@@ -1,0 +1,88 @@
+@model List<QUEUEDUP.Pages.EventViewModel>
+
+@if (!Model.Any())
+{
+    <div class="empty-state">
+        <p>SEARCH FOR AN ARTIST OR CITY ABOVE TO SEE EVENTS</p>
+    </div>
+}
+else
+{
+    <div class="events-grid">
+        @for (int i = 0; i < Model.Count; i++)
+        {
+            var ev = Model[i];
+            var locationParts = new[] { ev.City, ev.State, ev.Country }
+                .Where(p => !string.IsNullOrWhiteSpace(p));
+            var location = string.Join(", ", locationParts);
+
+            var (badgeText, badgeClass) = ev.StatusCode switch
+            {
+                "onsale"      => ("AVAILABLE",    "badge-available"),
+                "offsale"     => ("SOLD OUT",     "badge-soldout"),
+                "cancelled"   => ("CANCELLED",    "badge-cancelled"),
+                "rescheduled" => ("RESCHEDULED",  "badge-rescheduled"),
+                _             => ("",             "")
+            };
+
+            <article class="event-card">
+                <div class="card-img-wrap">
+                    @if (!string.IsNullOrEmpty(ev.ImageUrl))
+                    {
+                        <img src="@ev.ImageUrl" alt="@ev.Name" class="card-img" loading="lazy" />
+                    }
+                    @if (!string.IsNullOrEmpty(badgeText))
+                    {
+                        <span class="avail-badge @badgeClass">@badgeText</span>
+                    }
+                </div>
+                <div class="card-body">
+                    <h2 class="card-artist">@ev.Name</h2>
+
+                    <div class="card-meta">
+                        @if (!string.IsNullOrEmpty(ev.Venue))
+                        {
+                            <p class="card-venue">@ev.Venue</p>
+                        }
+                        @if (!string.IsNullOrEmpty(location))
+                        {
+                            <p class="card-location">
+                                <span class="location-pin">&#9679;</span> @location
+                            </p>
+                        }
+                        @if (!string.IsNullOrEmpty(ev.Address))
+                        {
+                            <p class="card-address">@ev.Address</p>
+                        }
+                        @if (!string.IsNullOrEmpty(ev.Date))
+                        {
+                            <p class="card-date">@ev.Date</p>
+                        }
+                        @if (!string.IsNullOrEmpty(ev.PriceRange))
+                        {
+                            <p class="card-price">@ev.PriceRange</p>
+                        }
+                    </div>
+
+                    <div class="card-actions">
+                        <button
+                            hx-get="/Index?handler=CheckAvailability&eventId=@ev.Id"
+                            hx-target="#status-@ev.Id"
+                            hx-swap="innerHTML"
+                            hx-indicator="#indicator-@ev.Id"
+                            class="check-btn">
+                            CHECK AVAILABILITY
+                        </button>
+                        @if (!string.IsNullOrEmpty(ev.TicketUrl))
+                        {
+                            <a href="@ev.TicketUrl" target="_blank" rel="noopener noreferrer" class="buy-btn">BUY TICKETS &rarr;</a>
+                        }
+                    </div>
+
+                    <span id="indicator-@ev.Id" class="htmx-indicator loading-dot"></span>
+                    <div id="status-@ev.Id" class="status-target"></div>
+                </div>
+            </article>
+        }
+    </div>
+}
