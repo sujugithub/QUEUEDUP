@@ -216,6 +216,44 @@ var SKELETON_HTML = '<div class="skeleton-list">' +
     Array(8).fill('<div class="skeleton-row"><div class="skeleton-rank"></div><div class="skeleton-info"><div class="skeleton-name"></div><div class="skeleton-sub"></div></div></div>').join('') +
     '</div>';
 
+var _qdAudio = null;
+var _qdPlayBtn = null;
+
+function qdPreview(btn) {
+    var url = btn.dataset.preview;
+    if (!url) return;
+
+    // Same button clicked while playing — pause
+    if (_qdPlayBtn === btn && _qdAudio && !_qdAudio.paused) {
+        _qdAudio.pause();
+        btn.innerHTML = '&#9654;';
+        btn.classList.remove('playing');
+        return;
+    }
+
+    // Stop whatever is currently playing
+    if (_qdAudio) { _qdAudio.pause(); _qdAudio.currentTime = 0; }
+    if (_qdPlayBtn && _qdPlayBtn !== btn) {
+        _qdPlayBtn.innerHTML = '&#9654;';
+        _qdPlayBtn.classList.remove('playing');
+    }
+
+    _qdAudio   = new Audio(url);
+    _qdPlayBtn = btn;
+    btn.innerHTML = '&#9632;';
+    btn.classList.add('playing');
+
+    _qdAudio.play().catch(function () {
+        btn.innerHTML = '&#9654;';
+        btn.classList.remove('playing');
+    });
+    _qdAudio.addEventListener('ended', function () {
+        btn.innerHTML = '&#9654;';
+        btn.classList.remove('playing');
+        _qdAudio = null; _qdPlayBtn = null;
+    });
+}
+
 function qdCopyAura(btn) {
     var text = btn.dataset.share || '';
     if (!text) return;

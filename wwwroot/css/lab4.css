@@ -1652,6 +1652,36 @@ body { padding-top: 60px; }
     .aura-bar-label { width: 90px; }
 }
 
+/* ── TRACK PREVIEW BUTTON ────────────────────────────── */
+.preview-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid #2a2a2a;
+    background: none;
+    color: #555;
+    font-size: 0.55rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    padding: 0;
+    line-height: 1;
+}
+.preview-btn:hover   { border-color: var(--color-lime); color: var(--color-lime); }
+.preview-btn.playing {
+    border-color: var(--color-lime);
+    color: #000;
+    background: var(--color-lime);
+    animation: preview-pulse 1.2s ease-in-out infinite;
+}
+@keyframes preview-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(200,241,53,0.4); }
+    50%       { box-shadow: 0 0 0 5px rgba(200,241,53,0); }
+}
+
 /* ── NOW PLAYING BAR ─────────────────────────────────── */
 #now-playing-bar {
     display: flex;
