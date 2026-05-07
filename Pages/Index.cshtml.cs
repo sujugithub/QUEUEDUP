@@ -188,7 +188,7 @@ public class IndexModel : PageModel
         if (tab == "tracks")
         {
             var doc    = await Fetch($"https://api.spotify.com/v1/me/top/tracks?limit=10&time_range={spotifyRange}");
-            var tracks = new List<(string Name, string Artist, string Uri, string Preview)>();
+            var tracks = new List<(string Name, string Artist, string Uri, string TrackId)>();
             if (doc?.RootElement.TryGetProperty("items", out var items) == true)
                 foreach (var t in items.EnumerateArray().Take(10))
                 {
@@ -196,9 +196,8 @@ public class IndexModel : PageModel
                     var artist  = t.TryGetProperty("artists", out var ar) && ar.GetArrayLength() > 0 &&
                                   ar[0].TryGetProperty("name", out var an) ? an.GetString() ?? "" : "";
                     var uri     = t.TryGetProperty("uri", out var u) ? u.GetString() ?? "" : "";
-                    var preview = t.TryGetProperty("preview_url", out var pu) && pu.ValueKind == JsonValueKind.String
-                                  ? pu.GetString() ?? "" : "";
-                    tracks.Add((name, artist, uri, preview));
+                    var trackId = t.TryGetProperty("id",  out var id) ? id.GetString() ?? "" : "";
+                    tracks.Add((name, artist, uri, trackId));
                 }
 
             // DB rank history
@@ -225,11 +224,11 @@ public class IndexModel : PageModel
             sb.Append("<div class=\"stat-list\">");
             for (int i = 0; i < tracks.Count; i++)
             {
-                var (name, artist, _, preview) = tracks[i];
+                var (name, artist, _, trackId) = tracks[i];
                 var change = GetRankChange(prevList, name, i);
                 sb.Append("<div class=\"stat-row\">");
-                if (!string.IsNullOrEmpty(preview))
-                    sb.Append($"<button class=\"preview-btn\" data-preview=\"{WebUtility.HtmlEncode(preview)}\" onclick=\"qdPreview(this)\" title=\"PREVIEW\">&#9654;</button>");
+                if (!string.IsNullOrEmpty(trackId))
+                    sb.Append($"<button class=\"preview-btn\" data-trackid=\"{WebUtility.HtmlEncode(trackId)}\" onclick=\"qdPreview(this)\" title=\"PREVIEW\">&#9654;</button>");
                 sb.Append($"<span class=\"stat-rank\">{i + 1:00}</span>");
                 sb.Append("<div class=\"stat-info\">");
                 sb.Append($"<span class=\"stat-name\">{WebUtility.HtmlEncode(name)}</span>");
@@ -407,15 +406,14 @@ public class IndexModel : PageModel
                     var trackName  = "";
                     var artistName = "";
                     var playedAt   = "";
-                    var previewUrl = "";
+                    var trackId    = "";
 
                     if (item.TryGetProperty("track", out var track))
                     {
                         trackName  = track.TryGetProperty("name",    out var tn) ? tn.GetString() ?? "" : "";
                         artistName = track.TryGetProperty("artists", out var ar) && ar.GetArrayLength() > 0 &&
                                      ar[0].TryGetProperty("name", out var an) ? an.GetString() ?? "" : "";
-                        previewUrl = track.TryGetProperty("preview_url", out var pu) && pu.ValueKind == JsonValueKind.String
-                                     ? pu.GetString() ?? "" : "";
+                        trackId    = track.TryGetProperty("id", out var tid) ? tid.GetString() ?? "" : "";
                     }
 
                     if (item.TryGetProperty("played_at", out var pa) &&
@@ -423,8 +421,8 @@ public class IndexModel : PageModel
                         playedAt = dt.ToLocalTime().ToString("MMM d, h:mm tt");
 
                     sb.Append("<div class=\"stat-row\">");
-                    if (!string.IsNullOrEmpty(previewUrl))
-                        sb.Append($"<button class=\"preview-btn\" data-preview=\"{WebUtility.HtmlEncode(previewUrl)}\" onclick=\"qdPreview(this)\" title=\"PREVIEW\">&#9654;</button>");
+                    if (!string.IsNullOrEmpty(trackId))
+                        sb.Append($"<button class=\"preview-btn\" data-trackid=\"{WebUtility.HtmlEncode(trackId)}\" onclick=\"qdPreview(this)\" title=\"PREVIEW\">&#9654;</button>");
                     sb.Append($"<span class=\"stat-rank\">{++i:00}</span>");
                     sb.Append("<div class=\"stat-info\">");
                     sb.Append($"<span class=\"stat-name\">{WebUtility.HtmlEncode(trackName)}</span>");

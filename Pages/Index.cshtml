@@ -202,6 +202,17 @@
     </div>
 </section>
 
+<div id="spotify-mini-player">
+    <div class="smp-header">
+        <span class="smp-label">▶ PREVIEW</span>
+        <button class="smp-close" onclick="qdClosePlayer()">✕</button>
+    </div>
+    <iframe id="spotify-embed-iframe" src="" width="100%" height="80"
+            frameborder="0"
+            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+            loading="lazy"></iframe>
+</div>
+
 <footer class="site-footer">
     <div class="footer-inner">
         <img src="/images/logo.png" alt="QUEUEDUP" class="footer-logo-img" />
@@ -216,42 +227,42 @@ var SKELETON_HTML = '<div class="skeleton-list">' +
     Array(8).fill('<div class="skeleton-row"><div class="skeleton-rank"></div><div class="skeleton-info"><div class="skeleton-name"></div><div class="skeleton-sub"></div></div></div>').join('') +
     '</div>';
 
-var _qdAudio = null;
 var _qdPlayBtn = null;
 
 function qdPreview(btn) {
-    var url = btn.dataset.preview;
-    if (!url) return;
+    var trackId = btn.dataset.trackid;
+    if (!trackId) return;
 
-    // Same button clicked while playing — pause
-    if (_qdPlayBtn === btn && _qdAudio && !_qdAudio.paused) {
-        _qdAudio.pause();
-        btn.innerHTML = '&#9654;';
-        btn.classList.remove('playing');
+    var player = document.getElementById('spotify-mini-player');
+    var iframe  = document.getElementById('spotify-embed-iframe');
+
+    // Same button — toggle player off
+    if (_qdPlayBtn === btn && player.classList.contains('visible')) {
+        qdClosePlayer();
         return;
     }
 
-    // Stop whatever is currently playing
-    if (_qdAudio) { _qdAudio.pause(); _qdAudio.currentTime = 0; }
+    // Reset previous button
     if (_qdPlayBtn && _qdPlayBtn !== btn) {
         _qdPlayBtn.innerHTML = '&#9654;';
         _qdPlayBtn.classList.remove('playing');
     }
 
-    _qdAudio   = new Audio(url);
     _qdPlayBtn = btn;
     btn.innerHTML = '&#9632;';
     btn.classList.add('playing');
 
-    _qdAudio.play().catch(function () {
-        btn.innerHTML = '&#9654;';
-        btn.classList.remove('playing');
-    });
-    _qdAudio.addEventListener('ended', function () {
-        btn.innerHTML = '&#9654;';
-        btn.classList.remove('playing');
-        _qdAudio = null; _qdPlayBtn = null;
-    });
+    iframe.src = 'https://open.spotify.com/embed/track/' + trackId + '?utm_source=generator&autoplay=1';
+    player.classList.add('visible');
+}
+
+function qdClosePlayer() {
+    var player = document.getElementById('spotify-mini-player');
+    var iframe  = document.getElementById('spotify-embed-iframe');
+    player.classList.remove('visible');
+    iframe.src = '';
+    if (_qdPlayBtn) { _qdPlayBtn.innerHTML = '&#9654;'; _qdPlayBtn.classList.remove('playing'); }
+    _qdPlayBtn = null;
 }
 
 function qdCopyAura(btn) {
