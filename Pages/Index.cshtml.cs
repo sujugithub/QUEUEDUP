@@ -288,6 +288,7 @@ public class IndexModel : PageModel
                     sb.Append($"<span class=\"stat-sub\">{WebUtility.HtmlEncode(genres)}</span>");
                 sb.Append("</div>");
                 sb.Append(RenderChange(change));
+                sb.Append($"<button class=\"find-concerts-btn\" data-artist=\"{WebUtility.HtmlEncode(name)}\" onclick=\"qdFindConcerts(this)\">CONCERTS ↓</button>");
                 sb.Append("</div>");
             }
             sb.Append("</div>");
@@ -659,6 +660,64 @@ public class IndexModel : PageModel
         catch { }
 
         return results;
+    }
+
+    public async Task<IActionResult> OnGetNowPlayingAsync()
+    {
+        var token = await GetValidTokenAsync();
+        if (string.IsNullOrEmpty(token)) return Content("", "text/html");
+
+        var client = _http.CreateClient();
+        var req    = new HttpRequestMessage(HttpMethod.Get, "https://api.spotify.com/v1/me/player/currently-playing");
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        try
+        {
+            var resp = await client.SendAsync(req);
+            if (resp.StatusCode == System.Net.HttpStatusCode.NoContent || !resp.IsSuccessStatusCode)
+                return Content("", "text/html");
+
+            var body = await resp.Content.ReadAsStringAsync();
+            if (string.IsNullOrWhiteSpace(body)) return Content("", "text/html");
+
+            var doc       = JsonDocument.Parse(body);
+            var isPlaying = doc.RootElement.TryGetProperty("is_playing", out var ip) && ip.GetBoolean();
+            if (!isPlaying) return Content("", "text/html");
+
+            string trackName = "", artistName = "", albumArt = "", trackUrl = "";
+            int progressMs = 0, durationMs = 0;
+
+            if (doc.RootElement.TryGetProperty("item", out var item))
+            {
+                trackName = item.TryGetProperty("name", out var tn) ? tn.GetString() ?? "" : "";
+                if (item.TryGetProperty("artists", out var ar) && ar.GetArrayLength() > 0)
+                    artistName = ar[0].TryGetProperty("name", out var an) ? an.GetString() ?? "" : "";
+                if (item.TryGetProperty("album", out var album) &&
+                    album.TryGetProperty("images", out var imgs) && imgs.GetArrayLength() > 0)
+                    albumArt = imgs[imgs.GetArrayLength() - 1].TryGetProperty("url", out var au) ? au.GetString() ?? "" : "";
+                if (item.TryGetProperty("external_urls", out var eu) && eu.TryGetProperty("spotify", out var su))
+                    trackUrl = su.GetString() ?? "";
+            }
+            if (doc.RootElement.TryGetProperty("progress_ms", out var pm)) progressMs = pm.GetInt32();
+            if (doc.RootElement.TryGetProperty("item",        out var it2) &&
+                it2.TryGetProperty("duration_ms", out var dm)) durationMs = dm.GetInt32();
+
+            var pct     = durationMs > 0 ? (int)((double)progressMs / durationMs * 100) : 0;
+            var artHtml = string.IsNullOrEmpty(albumArt) ? "" :
+                $"<img class=\"np-art\" src=\"{WebUtility.HtmlEncode(albumArt)}\" alt=\"\" />";
+            var trackHtml = string.IsNullOrEmpty(trackUrl)
+                ? $"<span class=\"np-track\">{WebUtility.HtmlEncode(trackName)}</span>"
+                : $"<a class=\"np-track\" href=\"{WebUtility.HtmlEncode(trackUrl)}\" target=\"_blank\">{WebUtility.HtmlEncode(trackName)}</a>";
+
+            return Content($"""
+                <div class="np-pulse"></div>
+                <span class="np-label">NOW PLAYING</span>
+                {artHtml}
+                <div class="np-info">{trackHtml}<span class="np-artist">{WebUtility.HtmlEncode(artistName)}</span></div>
+                <div class="np-bar-wrap"><div class="np-bar-fill" style="width:{pct}%"></div></div>
+                """, "text/html");
+        }
+        catch { return Content("", "text/html"); }
     }
 
     public async Task<IActionResult> OnGetSignupAsync(string? email)

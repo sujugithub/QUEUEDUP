@@ -37,9 +37,19 @@
         .login-error { color: #ff3cac; font-size: 0.7rem; margin-top: 0.5rem; letter-spacing: 0.05em; }
 
         .admin-wrap { padding: 3rem 4vw; max-width: 900px; margin: 0 auto; }
-        .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2.5rem; }
+        .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2.5rem; flex-wrap: wrap; gap: 1rem; }
         .admin-title { font-size: 1.5rem; letter-spacing: 0.15em; }
         .admin-count { color: #c8f135; font-size: 0.75rem; letter-spacing: 0.1em; }
+        .admin-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+        .export-btn {
+            background: #c8f135; color: #000; border: none;
+            padding: 0.4rem 0.9rem; font-family: inherit;
+            font-size: 0.65rem; letter-spacing: 0.1em; cursor: pointer; font-weight: 700;
+            text-decoration: none; display: inline-block;
+        }
+        .export-btn:hover { opacity: 0.85; }
+
         .logout-btn {
             background: none; border: 1px solid #333; color: #555; padding: 0.4rem 0.9rem;
             font-family: inherit; font-size: 0.65rem; letter-spacing: 0.1em; cursor: pointer;
@@ -54,6 +64,13 @@
         td { padding: 0.9rem 1rem; font-size: 0.75rem; letter-spacing: 0.05em; }
         td.muted { color: #555; }
         .empty { color: #555; font-size: 0.75rem; padding: 2rem 1rem; letter-spacing: 0.1em; }
+
+        .delete-btn {
+            background: none; border: 1px solid #2a1a1a; color: #444;
+            padding: 0.25rem 0.55rem; font-family: inherit;
+            font-size: 0.6rem; letter-spacing: 0.1em; cursor: pointer;
+        }
+        .delete-btn:hover { border-color: #ff3cac; color: #ff3cac; }
     </style>
 </head>
 <body>
@@ -82,9 +99,12 @@ else
                 <p class="admin-title">EMAIL SIGNUPS</p>
                 <p class="admin-count">@Model.Emails.Count SUBSCRIBER@(Model.Emails.Count == 1 ? "" : "S")</p>
             </div>
-            <form method="post" asp-page-handler="Logout">
-                <button class="logout-btn" type="submit">LOGOUT</button>
-            </form>
+            <div class="admin-actions">
+                <a class="export-btn" href="/Admin?handler=ExportCsv">EXPORT CSV</a>
+                <form method="post" asp-page-handler="Logout">
+                    <button class="logout-btn" type="submit">LOGOUT</button>
+                </form>
+            </div>
         </div>
 
         @if (Model.Emails.Count == 0)
@@ -99,6 +119,7 @@ else
                         <th>#</th>
                         <th>EMAIL</th>
                         <th>SIGNED UP</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -108,6 +129,12 @@ else
                             <td class="muted">@(i + 1)</td>
                             <td>@Model.Emails[i].Email</td>
                             <td class="muted">@Model.Emails[i].SignedUpAt.ToLocalTime().ToString("MMM d, yyyy — h:mm tt")</td>
+                            <td>
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Emails[i].Id"
+                                      onsubmit="return confirm('Remove @Model.Emails[i].Email?')">
+                                    <button class="delete-btn" type="submit">REMOVE</button>
+                                </form>
+                            </td>
                         </tr>
                     }
                 </tbody>

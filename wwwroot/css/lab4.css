@@ -1045,9 +1045,8 @@ body { padding-top: 60px; }
 
 .stats-tabs {
     display: flex;
-    border-bottom: 1px solid var(--color-border);
-    padding: 0 5vw;
     overflow-x: auto;
+    flex: 1;
 }
 
 .tab-btn {
@@ -1651,4 +1650,168 @@ body { padding-top: 60px; }
 @media (max-width: 600px) {
     .aura-card { padding: 2rem 1.5rem; }
     .aura-bar-label { width: 90px; }
+}
+
+/* ── NOW PLAYING BAR ─────────────────────────────────── */
+#now-playing-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 4vw;
+    background: #0d0d0d;
+    border-bottom: 1px solid #1a1a1a;
+    font-family: var(--font-mono);
+    overflow: hidden;
+}
+#now-playing-bar:empty { display: none; padding: 0; }
+
+.np-pulse {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-lime);
+    flex-shrink: 0;
+    animation: np-pulse 1.8s ease-in-out infinite;
+}
+@keyframes np-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.35; transform: scale(0.75); }
+}
+.np-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.2em;
+    color: var(--color-muted);
+    flex-shrink: 0;
+}
+.np-art {
+    width: 30px;
+    height: 30px;
+    object-fit: cover;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+.np-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+}
+.np-track {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--color-text);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.np-track:hover { color: var(--color-lime); }
+.np-artist {
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    color: var(--color-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.np-bar-wrap {
+    width: 100px;
+    height: 2px;
+    background: #222;
+    border-radius: 1px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.np-bar-fill {
+    height: 100%;
+    background: var(--color-lime);
+    border-radius: 1px;
+}
+
+/* ── SKELETON LOADER ─────────────────────────────────── */
+@keyframes skeleton-shimmer {
+    0%, 100% { opacity: 0.35; }
+    50%       { opacity: 0.7;  }
+}
+.skeleton-list { display: flex; flex-direction: column; }
+.skeleton-row {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--color-border);
+}
+.skeleton-rank {
+    width: 26px;
+    height: 13px;
+    background: #1e1e1e;
+    border-radius: 2px;
+    flex-shrink: 0;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+.skeleton-info { display: flex; flex-direction: column; gap: 7px; flex: 1; }
+.skeleton-name {
+    height: 13px;
+    width: 52%;
+    background: #1e1e1e;
+    border-radius: 2px;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+.skeleton-sub {
+    height: 10px;
+    width: 33%;
+    background: #171717;
+    border-radius: 2px;
+    animation: skeleton-shimmer 1.6s ease-in-out infinite 0.25s;
+}
+
+/* ── STATS TABS ROW (tabs + share button on same line) ─ */
+.stats-tabs-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0 5vw;
+    border-bottom: 1px solid var(--color-border);
+}
+
+/* ── SHARE STATS BUTTON ──────────────────────────────── */
+.share-stats-btn {
+    background: none;
+    border: 1px solid #2a2a2a;
+    color: #555;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    padding: 0.45rem 0.9rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+}
+.share-stats-btn:hover  { color: var(--color-lime); border-color: var(--color-lime); }
+.share-stats-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── FIND CONCERTS BUTTON ────────────────────────────── */
+.find-concerts-btn {
+    background: none;
+    border: 1px solid #222;
+    color: #444;
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    padding: 0.28rem 0.55rem;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: color 0.15s, border-color 0.15s;
+}
+.find-concerts-btn:hover { color: var(--color-lime); border-color: var(--color-lime); }
+
+@media (max-width: 768px) {
+    .np-bar-wrap { display: none; }
+    .find-concerts-btn { display: none; }
+    .share-stats-btn { font-size: 0.55rem; padding: 0.35rem 0.7rem; }
 }

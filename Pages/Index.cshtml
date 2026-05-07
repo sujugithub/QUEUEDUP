@@ -19,6 +19,14 @@
     </div>
 </header>
 
+@if (Model.SpotifyConnected)
+{
+    <div id="now-playing-bar"
+         hx-get="/Index?handler=NowPlaying"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML"></div>
+}
+
 <main class="stats-main">
     @if (!Model.SpotifyConnected)
     {
@@ -76,16 +84,25 @@
                     <button class="period-btn" data-period="12months">LAST 12 MONTHS</button>
                 </div>
             </div>
-            <div class="stats-tabs">
-                <button class="tab-btn active" data-tab="tracks">TOP TRACKS</button>
-                <button class="tab-btn" data-tab="artists">TOP ARTISTS</button>
-                <button class="tab-btn" data-tab="genres">TOP GENRES</button>
-                <button class="tab-btn" data-tab="recent">RECENTLY PLAYED</button>
-                <button class="tab-btn aura-tab-btn" data-tab="aura">MUSIC AURA</button>
+            <div class="stats-tabs-row">
+                <div class="stats-tabs">
+                    <button class="tab-btn active" data-tab="tracks">TOP TRACKS</button>
+                    <button class="tab-btn" data-tab="artists">TOP ARTISTS</button>
+                    <button class="tab-btn" data-tab="genres">TOP GENRES</button>
+                    <button class="tab-btn" data-tab="recent">RECENTLY PLAYED</button>
+                    <button class="tab-btn aura-tab-btn" data-tab="aura">MUSIC AURA</button>
+                </div>
+                <button class="share-stats-btn" id="share-stats-btn" onclick="qdShareStats()">↗ SHARE STATS</button>
             </div>
             <div class="stats-body">
                 <span id="stats-indicator" class="htmx-indicator stats-spinner"></span>
-                <div id="stats-content" class="stats-content"></div>
+                <div id="stats-content" class="stats-content">
+                    <div class="skeleton-list">
+                        @for (int s = 0; s < 8; s++) {
+                            <div class="skeleton-row"><div class="skeleton-rank"></div><div class="skeleton-info"><div class="skeleton-name"></div><div class="skeleton-sub"></div></div></div>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
     }
@@ -193,7 +210,12 @@
 </footer>
 
 @section Scripts {
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
+var SKELETON_HTML = '<div class="skeleton-list">' +
+    Array(8).fill('<div class="skeleton-row"><div class="skeleton-rank"></div><div class="skeleton-info"><div class="skeleton-name"></div><div class="skeleton-sub"></div></div></div>').join('') +
+    '</div>';
+
 function qdCopyAura(btn) {
     var text = btn.dataset.share || '';
     if (!text) return;
@@ -207,6 +229,39 @@ function qdCopyAura(btn) {
             setTimeout(function () { btn.textContent = 'COPY AURA'; }, 2000);
         });
 }
+
+function qdFindConcerts(btn) {
+    var artist = btn.dataset.artist || '';
+    var kw = document.getElementById('keyword-input');
+    if (kw) kw.value = artist;
+    document.querySelector('.tickets-section').scrollIntoView({ behavior: 'smooth' });
+    setTimeout(function () {
+        htmx.ajax('GET', '/Index?handler=Search', {
+            target: '#events-container',
+            swap: 'innerHTML',
+            indicator: '#search-indicator',
+            values: { keyword: artist, city: (document.getElementById('city-input') || {}).value || '' }
+        });
+    }, 400);
+}
+
+function qdShareStats() {
+    var btn = document.getElementById('share-stats-btn');
+    var target = document.getElementById('stats-content');
+    if (!target || !window.html2canvas) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'CAPTURING...'; }
+    html2canvas(target, { backgroundColor: '#0a0a0a', scale: 2, useCORS: true, logging: false })
+        .then(function (canvas) {
+            var a = document.createElement('a');
+            a.download = 'my-queuedup-stats.png';
+            a.href = canvas.toDataURL('image/png');
+            a.click();
+        })
+        .finally(function () {
+            if (btn) { btn.disabled = false; btn.textContent = '↗ SHARE STATS'; }
+        });
+}
+
 function qdSearchArtist(btn) {
     var artist = btn.dataset.artist || '';
     var kw = document.getElementById('keyword-input');
@@ -226,6 +281,7 @@ function qdSearchArtist(btn) {
     let activePeriod = '6months';
 
     function loadStats() {
+        document.getElementById('stats-content').innerHTML = SKELETON_HTML;
         const url = activeTab === 'recent'
             ? '/Index?handler=RecentlyPlayed'
             : activeTab === 'aura'
