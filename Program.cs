@@ -1,14 +1,20 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using QUEUEDUP.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: false);
 
+// Configurable DB path — set DbPath env var in Azure to "Data Source=/home/data/queuedup.db"
+var dbPath = builder.Configuration["DbPath"] ?? "Data Source=queuedup.db";
+var dbFile = dbPath.Replace("Data Source=", "").Trim();
+var dbDir  = Path.GetDirectoryName(Path.GetFullPath(dbFile));
+if (!string.IsNullOrEmpty(dbDir)) Directory.CreateDirectory(dbDir);
+
 builder.Services.AddRazorPages();
 builder.Services.AddHttpClient();
 builder.Services.AddDistributedMemoryCache();
-builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseSqlite("Data Source=queuedup.db"));
+builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(dbPath));
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromDays(30);
@@ -19,6 +25,12 @@ builder.Services.AddSession(options =>
 });
 
 var app = builder.Build();
+
+// Trust Azure's reverse proxy so HTTPS cookies work correctly
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 
 if (!app.Environment.IsDevelopment())
 {

@@ -1,8 +1,80 @@
-﻿@page
+@page
 @model PrivacyModel
 @{
     ViewData["Title"] = "Privacy Policy";
+    Layout = null;
 }
-<h1>@ViewData["Title"]</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QUEUEDUP — Privacy Policy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #0a0a0a; color: #f0f0f0; font-family: 'Space Mono', monospace; min-height: 100vh; }
+        .wrap { max-width: 760px; margin: 0 auto; padding: 4rem 2rem; }
+        .back { color: #c8f135; font-size: 0.7rem; letter-spacing: 0.15em; text-decoration: none; display: inline-block; margin-bottom: 2.5rem; }
+        .back:hover { opacity: 0.75; }
+        h1 { font-size: 2rem; letter-spacing: 0.15em; margin-bottom: 0.5rem; }
+        .updated { color: #555; font-size: 0.65rem; letter-spacing: 0.1em; margin-bottom: 3rem; }
+        h2 { font-size: 0.75rem; letter-spacing: 0.2em; color: #c8f135; margin: 2rem 0 0.75rem; }
+        p, li { font-size: 0.78rem; line-height: 1.8; color: #bbb; letter-spacing: 0.02em; }
+        ul { padding-left: 1.5rem; margin-top: 0.5rem; }
+        li { margin-bottom: 0.4rem; }
+        a { color: #c8f135; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <a class="back" href="/">← BACK TO QUEUEDUP</a>
+    <h1>PRIVACY POLICY</h1>
+    <p class="updated">Last updated: May 2026</p>
 
-<p>Use this page to detail your site's privacy policy.</p>
+    <h2>1. WHAT IS QUEUEDUP?</h2>
+    <p>QUEUEDUP is a music discovery web application that connects to your Spotify account to display personalised listening statistics, top tracks, top artists, genre breakdowns, and a music personality "aura". It also surfaces live music events near you via Ticketmaster.</p>
+
+    <h2>2. DATA WE COLLECT</h2>
+    <p>When you connect your Spotify account, we access and store:</p>
+    <ul>
+        <li>Your Spotify user ID and display name</li>
+        <li>Your Spotify OAuth access token and refresh token (used only to fetch your music data)</li>
+        <li>Your top tracks and top artists (names only, stored as daily snapshots for rank-change tracking)</li>
+    </ul>
+    <p>If you sign up to our mailing list, we store your email address and the date you signed up.</p>
+    <p>We do not collect passwords, payment information, or any other personal data.</p>
+
+    <h2>3. HOW WE USE YOUR DATA</h2>
+    <ul>
+        <li>To display your personalised Spotify stats within the app</li>
+        <li>To track rank changes in your top tracks and artists over time</li>
+        <li>To automatically refresh your Spotify session so you stay logged in</li>
+        <li>To send you occasional product updates if you opted into our mailing list</li>
+    </ul>
+    <p>We do not sell, share, or transfer your data to any third party beyond what is required to operate the app (Spotify API, Ticketmaster API).</p>
+
+    <h2>4. SPOTIFY DATA</h2>
+    <p>We use the Spotify Web API under Spotify's <a href="https://developer.spotify.com/terms" target="_blank">Developer Terms of Service</a>. The Spotify scopes we request are:</p>
+    <ul>
+        <li><strong>user-top-read</strong> — read your top artists and tracks</li>
+        <li><strong>user-read-private</strong> — read your Spotify user ID and country</li>
+        <li><strong>user-read-recently-played</strong> — read your recently played tracks</li>
+        <li><strong>playlist-modify-private</strong> — create private playlists on your behalf</li>
+    </ul>
+    <p>You can revoke QUEUEDUP's access to your Spotify account at any time via <a href="https://www.spotify.com/account/apps/" target="_blank">spotify.com/account/apps</a>.</p>
+
+    <h2>5. DATA STORAGE & SECURITY</h2>
+    <p>All data is stored in a private SQLite database hosted on a secured server. Access tokens are stored encrypted at rest. We do not log or expose your tokens in any public-facing interface.</p>
+
+    <h2>6. DATA RETENTION</h2>
+    <p>Your data is retained as long as your account is active. You can request deletion of your data at any time by contacting us. Disconnecting Spotify from within the app will clear your session immediately.</p>
+
+    <h2>7. COOKIES</h2>
+    <p>We use a single session cookie to keep you logged in. This cookie is HTTP-only, not used for advertising, and expires after 30 days of inactivity.</p>
+
+    <h2>8. CONTACT</h2>
+    <p>For any privacy-related questions, email us at <a href="mailto:sujayshrestha8@gmail.com">sujayshrestha8@gmail.com</a>.</p>
+</div>
+</body>
+</html>
