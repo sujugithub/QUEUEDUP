@@ -1540,6 +1540,114 @@ body { padding-top: 60px; }
     box-shadow: 0 0 16px var(--aura-accent, var(--color-lime));
 }
 
+/* ===== EMAIL SIGNUP ===== */
+.signup-section {
+    border-top: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    padding: 5rem 5vw;
+    background: var(--color-surface);
+}
+
+.signup-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 4rem;
+}
+
+.signup-left {
+    flex: 1;
+}
+
+.signup-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--color-lime);
+    display: block;
+    margin-bottom: 0.75rem;
+}
+
+.signup-title {
+    font-family: var(--font-display);
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    letter-spacing: 0.05em;
+    line-height: 1;
+    margin-bottom: 0.75rem;
+}
+
+.signup-sub {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+}
+
+.signup-right {
+    flex: 1;
+}
+
+.signup-form-wrap {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--color-border);
+}
+
+.signup-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 1rem 1.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    color: var(--color-text);
+}
+
+.signup-input::placeholder {
+    color: var(--color-muted);
+}
+
+.signup-input:focus {
+    background: rgba(200, 241, 53, 0.03);
+}
+
+.signup-btn {
+    background: var(--color-lime);
+    color: #000;
+    border: none;
+    padding: 1rem 1.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+}
+
+.signup-btn:hover { opacity: 0.85; }
+
+.signup-msg {
+    display: block;
+    margin-top: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+}
+
+.signup-success { color: var(--color-lime); }
+.signup-error   { color: var(--color-pink); }
+
+@media (max-width: 768px) {
+    .signup-inner { flex-direction: column; gap: 2rem; }
+    .signup-form-wrap { flex-direction: column; }
+    .signup-btn { width: 100%; }
+}
+
 @media (max-width: 600px) {
     .aura-card { padding: 2rem 1.5rem; }
     .aura-bar-label { width: 90px; }

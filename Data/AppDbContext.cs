@@ -11,6 +11,13 @@ public class SpotifyUser
     public DateTime TokenExpiry   { get; set; }
 }
 
+public class EmailSignup
+{
+    public int      Id         { get; set; }
+    public string   Email      { get; set; } = "";
+    public DateTime SignedUpAt { get; set; }
+}
+
 public class RankSnapshot
 {
     public int      Id            { get; set; }
@@ -27,12 +34,16 @@ public class AppDbContext : DbContext
 
     public DbSet<SpotifyUser>  SpotifyUsers  => Set<SpotifyUser>();
     public DbSet<RankSnapshot> RankSnapshots => Set<RankSnapshot>();
+    public DbSet<EmailSignup>  EmailSignups  => Set<EmailSignup>();
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
         mb.Entity<SpotifyUser>().HasKey(u => u.Id);
         mb.Entity<RankSnapshot>()
           .HasIndex(s => new { s.SpotifyUserId, s.Type, s.TimeRange, s.Date })
+          .IsUnique();
+        mb.Entity<EmailSignup>()
+          .HasIndex(e => e.Email)
           .IsUnique();
     }
 }

@@ -661,6 +661,22 @@ public class IndexModel : PageModel
         return results;
     }
 
+    public async Task<IActionResult> OnGetSignupAsync(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@') || !email.Contains('.'))
+            return Content("<span class=\"signup-msg signup-error\">ENTER A VALID EMAIL ADDRESS</span>", "text/html");
+
+        email = email.Trim().ToLower();
+
+        if (await _db.EmailSignups.AnyAsync(e => e.Email == email))
+            return Content("<span class=\"signup-msg signup-success\">YOU'RE ALREADY ON THE LIST ✓</span>", "text/html");
+
+        _db.EmailSignups.Add(new EmailSignup { Email = email, SignedUpAt = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
+
+        return Content("<span class=\"signup-msg signup-success\">YOU'RE ON THE LIST — WE'LL BE IN TOUCH ✓</span>", "text/html");
+    }
+
     private async Task<List<string>> FetchSpotifyTopArtistsAsync(string token)
     {
         var client = _http.CreateClient();

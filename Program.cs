@@ -34,6 +34,17 @@ app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
 
 using (var scope = app.Services.CreateScope())
-    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.EnsureCreated();
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+    db.Database.ExecuteSqlRaw(@"
+        CREATE TABLE IF NOT EXISTS ""EmailSignups"" (
+            ""Id""         INTEGER NOT NULL CONSTRAINT ""PK_EmailSignups"" PRIMARY KEY AUTOINCREMENT,
+            ""Email""      TEXT    NOT NULL,
+            ""SignedUpAt"" TEXT    NOT NULL
+        )");
+    db.Database.ExecuteSqlRaw(@"
+        CREATE UNIQUE INDEX IF NOT EXISTS ""IX_EmailSignups_Email"" ON ""EmailSignups"" (""Email"")");
+}
 
 app.Run();

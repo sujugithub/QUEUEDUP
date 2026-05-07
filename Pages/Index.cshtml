@@ -162,6 +162,29 @@
     </div>
 </section>
 
+<section class="signup-section">
+    <div class="signup-inner">
+        <div class="signup-left">
+            <span class="signup-eyebrow">/ STAY IN THE LOOP</span>
+            <h2 class="signup-title">JOIN THE LIST</h2>
+            <p class="signup-sub">New features, exclusive events, music drops. No spam — ever.</p>
+        </div>
+        <div class="signup-right">
+            <div class="signup-form-wrap">
+                <input id="signup-email" type="email" name="email"
+                    placeholder="YOUR EMAIL ADDRESS"
+                    class="signup-input" autocomplete="email" spellcheck="false" />
+                <button class="signup-btn"
+                    hx-get="/Index?handler=Signup"
+                    hx-target="#signup-result"
+                    hx-swap="innerHTML"
+                    hx-include="#signup-email">SIGN UP</button>
+            </div>
+            <div id="signup-result"></div>
+        </div>
+    </div>
+</section>
+
 <footer class="site-footer">
     <div class="footer-inner">
         <img src="/images/logo.png" alt="QUEUEDUP" class="footer-logo-img" />
