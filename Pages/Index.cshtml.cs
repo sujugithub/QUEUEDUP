@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using QUEUEDUP.Data;
 
 namespace QUEUEDUP.Pages;
 
@@ -26,28 +28,81 @@ public class EventViewModel
 public class IndexModel : PageModel
 {
     private readonly IHttpClientFactory _http;
-    private readonly IConfiguration _config;
+    private readonly IConfiguration     _config;
+    private readonly AppDbContext        _db;
 
-    public List<EventViewModel> Events { get; set; } = new();
-    public List<string> TopArtists { get; set; } = new();
-    public string SpotifyUser { get; set; } = "";
-    public bool SpotifyConnected => !string.IsNullOrEmpty(SpotifyUser);
+    public List<EventViewModel> Events     { get; set; } = new();
+    public List<string>         TopArtists { get; set; } = new();
+    public string               SpotifyUser    { get; set; } = "";
+    public bool                 SpotifyConnected => !string.IsNullOrEmpty(SpotifyUser);
 
-    public IndexModel(IHttpClientFactory http, IConfiguration config)
+    public IndexModel(IHttpClientFactory http, IConfiguration config, AppDbContext db)
     {
-        _http = http;
+        _http   = http;
         _config = config;
+        _db     = db;
+    }
+
+    // Returns valid access token (refreshing if needed), and populates SpotifyUser.
+    private async Task<string?> GetValidTokenAsync()
+    {
+        var userId = HttpContext.Session.GetString("SpotifyUserId");
+        if (string.IsNullOrEmpty(userId)) return null;
+
+        var user = await _db.SpotifyUsers.FindAsync(userId);
+        if (user == null) { HttpContext.Session.Clear(); return null; }
+
+        SpotifyUser = user.DisplayName;
+
+        if (DateTime.UtcNow >= user.TokenExpiry.AddMinutes(-5))
+        {
+            if (!await RefreshSpotifyTokenAsync(user))
+            { HttpContext.Session.Clear(); SpotifyUser = ""; return null; }
+        }
+
+        return user.AccessToken;
+    }
+
+    private async Task<bool> RefreshSpotifyTokenAsync(SpotifyUser user)
+    {
+        var clientId     = _config["Spotify:ClientId"]     ?? "";
+        var clientSecret = _config["Spotify:ClientSecret"] ?? "";
+        var credentials  = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{clientId}:{clientSecret}"));
+
+        var client = _http.CreateClient();
+        var req    = new HttpRequestMessage(HttpMethod.Post, "https://accounts.spotify.com/api/token");
+        req.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+        req.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"]    = "refresh_token",
+            ["refresh_token"] = user.RefreshToken,
+        });
+
+        try
+        {
+            var resp = await client.SendAsync(req);
+            if (!resp.IsSuccessStatusCode) return false;
+            var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+            if (!doc.RootElement.TryGetProperty("access_token", out var t)) return false;
+
+            user.AccessToken = t.GetString() ?? "";
+            user.TokenExpiry = DateTime.UtcNow.AddSeconds(
+                doc.RootElement.TryGetProperty("expires_in", out var exp) ? exp.GetInt32() : 3600);
+            if (doc.RootElement.TryGetProperty("refresh_token", out var rt) && !string.IsNullOrEmpty(rt.GetString()))
+                user.RefreshToken = rt.GetString()!;
+
+            await _db.SaveChangesAsync();
+            return true;
+        }
+        catch { return false; }
     }
 
     public async Task OnGetAsync()
     {
         Events = await FetchEventsAsync(null, null);
-        var token = HttpContext.Session.GetString("SpotifyToken");
+        var token = await GetValidTokenAsync();
         if (!string.IsNullOrEmpty(token))
-        {
-            SpotifyUser = HttpContext.Session.GetString("SpotifyUser") ?? "";
-            TopArtists  = await FetchSpotifyTopArtistsAsync(token);
-        }
+            TopArtists = await FetchSpotifyTopArtistsAsync(token);
     }
 
     public async Task<IActionResult> OnGetSearchAsync(string? keyword, string? city)
@@ -99,16 +154,17 @@ public class IndexModel : PageModel
 
     public IActionResult OnGetLogoutSpotify()
     {
-        HttpContext.Session.Remove("SpotifyToken");
-        HttpContext.Session.Remove("SpotifyUser");
+        HttpContext.Session.Clear();
         return RedirectToPage();
     }
 
     public async Task<IActionResult> OnGetTopStatsAsync(string? timeRange, string? tab)
     {
-        var token = HttpContext.Session.GetString("SpotifyToken");
+        var token = await GetValidTokenAsync();
         if (string.IsNullOrEmpty(token)) return Content("", "text/html");
 
+        var userId       = HttpContext.Session.GetString("SpotifyUserId")!;
+        var today        = DateTime.UtcNow.Date;
         var spotifyRange = timeRange switch
         {
             "4weeks"   => "short_term",
@@ -143,9 +199,25 @@ public class IndexModel : PageModel
                     tracks.Add((name, artist, uri));
                 }
 
-            var prevKey  = $"SpotifyRankTracks_{timeRange}";
-            var prevList = JsonSerializer.Deserialize<List<string>>(HttpContext.Session.GetString(prevKey) ?? "[]") ?? new();
-            HttpContext.Session.SetString(prevKey, JsonSerializer.Serialize(tracks.Select(t => t.Name).ToList()));
+            // DB rank history
+            var prevSnap = await _db.RankSnapshots
+                .Where(s => s.SpotifyUserId == userId && s.Type == "tracks"
+                         && s.TimeRange == spotifyRange && s.Date < today)
+                .OrderByDescending(s => s.Date).FirstOrDefaultAsync();
+            var prevList = prevSnap != null
+                ? JsonSerializer.Deserialize<List<string>>(prevSnap.ItemsJson) ?? new()
+                : new List<string>();
+
+            var todaySnap = await _db.RankSnapshots.FirstOrDefaultAsync(
+                s => s.SpotifyUserId == userId && s.Type == "tracks"
+                  && s.TimeRange == spotifyRange && s.Date == today);
+            var newJson = JsonSerializer.Serialize(tracks.Select(t => t.Name).ToList());
+            if (todaySnap == null)
+                _db.RankSnapshots.Add(new RankSnapshot { SpotifyUserId = userId, Type = "tracks", TimeRange = spotifyRange, Date = today, ItemsJson = newJson });
+            else
+                todaySnap.ItemsJson = newJson;
+            await _db.SaveChangesAsync();
+
             HttpContext.Session.SetString($"SpotifyTrackUris_{timeRange}", JsonSerializer.Serialize(tracks.Select(t => t.Uri).ToList()));
 
             sb.Append("<div class=\"stat-list\">");
@@ -184,9 +256,24 @@ public class IndexModel : PageModel
                     artists.Add((name, string.Join(" · ", genreList)));
                 }
 
-            var prevKey  = $"SpotifyRankArtists_{timeRange}";
-            var prevList = JsonSerializer.Deserialize<List<string>>(HttpContext.Session.GetString(prevKey) ?? "[]") ?? new();
-            HttpContext.Session.SetString(prevKey, JsonSerializer.Serialize(artists.Select(a => a.Name).ToList()));
+            // DB rank history
+            var prevSnap = await _db.RankSnapshots
+                .Where(s => s.SpotifyUserId == userId && s.Type == "artists"
+                         && s.TimeRange == spotifyRange && s.Date < today)
+                .OrderByDescending(s => s.Date).FirstOrDefaultAsync();
+            var prevList = prevSnap != null
+                ? JsonSerializer.Deserialize<List<string>>(prevSnap.ItemsJson) ?? new()
+                : new List<string>();
+
+            var todaySnap = await _db.RankSnapshots.FirstOrDefaultAsync(
+                s => s.SpotifyUserId == userId && s.Type == "artists"
+                  && s.TimeRange == spotifyRange && s.Date == today);
+            var newJson = JsonSerializer.Serialize(artists.Select(a => a.Name).ToList());
+            if (todaySnap == null)
+                _db.RankSnapshots.Add(new RankSnapshot { SpotifyUserId = userId, Type = "artists", TimeRange = spotifyRange, Date = today, ItemsJson = newJson });
+            else
+                todaySnap.ItemsJson = newJson;
+            await _db.SaveChangesAsync();
 
             sb.Append("<div class=\"stat-list\">");
             for (int i = 0; i < artists.Count; i++)
@@ -211,7 +298,6 @@ public class IndexModel : PageModel
             var artistIds  = new List<string>();
             int artistCount = 0;
 
-            // Step 1: collect artist IDs from top artists (genres field is often empty here)
             async Task CollectArtistIds(string range)
             {
                 var d = await Fetch($"https://api.spotify.com/v1/me/top/artists?limit=50&time_range={range}");
@@ -219,7 +305,6 @@ public class IndexModel : PageModel
                 foreach (var a in items.EnumerateArray())
                 {
                     artistCount++;
-                    // also grab any genres that happen to be populated
                     if (a.TryGetProperty("genres", out var gs))
                         foreach (var g in gs.EnumerateArray())
                         { var gn = g.GetString(); if (!string.IsNullOrEmpty(gn)) rawGenres.Add(gn); }
@@ -232,13 +317,11 @@ public class IndexModel : PageModel
             if (artistIds.Count < 10) await CollectArtistIds("medium_term");
             if (artistIds.Count < 10) await CollectArtistIds("long_term");
 
-            // Step 2: if top-artists returned no genres, batch-fetch full artist objects
             if (rawGenres.Count == 0 && artistIds.Count > 0)
             {
                 foreach (var batch in artistIds.Distinct().Chunk(50))
                 {
-                    var ids = string.Join(",", batch);
-                    var d2  = await Fetch($"https://api.spotify.com/v1/artists?ids={ids}");
+                    var d2 = await Fetch($"https://api.spotify.com/v1/artists?ids={string.Join(",", batch)}");
                     if (d2?.RootElement.TryGetProperty("artists", out var arts) != true) continue;
                     foreach (var a in arts.EnumerateArray())
                         if (a.TryGetProperty("genres", out var gs))
@@ -247,7 +330,6 @@ public class IndexModel : PageModel
                 }
             }
 
-            // Map raw Spotify micro-genre tags to display categories
             var genreCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             foreach (var raw in rawGenres)
             {
@@ -260,7 +342,6 @@ public class IndexModel : PageModel
 
             if (topGenres.Count == 0 && rawGenres.Count > 0)
             {
-                // Spotify returned genres but none matched our mapping — group raw tags directly
                 var rawCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                 foreach (var r in rawGenres)
                     rawCounts[r] = rawCounts.GetValueOrDefault(r) + 1;
@@ -297,7 +378,7 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnGetRecentlyPlayedAsync()
     {
-        var token = HttpContext.Session.GetString("SpotifyToken");
+        var token = await GetValidTokenAsync();
         if (string.IsNullOrEmpty(token)) return Content("", "text/html");
 
         var client = _http.CreateClient();
@@ -351,7 +432,7 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnGetCreatePlaylistAsync(string? timeRange)
     {
-        var token = HttpContext.Session.GetString("SpotifyToken");
+        var token = await GetValidTokenAsync();
         if (string.IsNullOrEmpty(token))
             return Content("<span class=\"playlist-error\">NOT CONNECTED</span>", "text/html");
 
@@ -590,13 +671,7 @@ public class IndexModel : PageModel
         try
         {
             var resp = await client.SendAsync(req);
-            if (!resp.IsSuccessStatusCode)
-            {
-                HttpContext.Session.Remove("SpotifyToken");
-                HttpContext.Session.Remove("SpotifyUser");
-                SpotifyUser = "";
-                return new List<string>();
-            }
+            if (!resp.IsSuccessStatusCode) return new List<string>();
 
             var doc     = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
             var artists = new List<string>();
@@ -609,17 +684,9 @@ public class IndexModel : PageModel
         catch { return new List<string>(); }
     }
 
-    private static int GetRankChange(List<string> prevList, string name, int currentIndex)
-    {
-        if (prevList.Count == 0) return int.MinValue;
-        var prevIndex = prevList.IndexOf(name);
-        if (prevIndex < 0) return int.MinValue;
-        return prevIndex - currentIndex;
-    }
-
     public async Task<IActionResult> OnGetAuraAsync()
     {
-        var token = HttpContext.Session.GetString("SpotifyToken");
+        var token = await GetValidTokenAsync();
         if (string.IsNullOrEmpty(token))
             return Content("<p class=\"stat-empty\">CONNECT SPOTIFY TO SEE YOUR AURA</p>", "text/html");
 
@@ -638,7 +705,6 @@ public class IndexModel : PageModel
             catch { return null; }
         }
 
-        // Top tracks → audio features (may be unavailable for newer Spotify apps)
         var tracksDoc = await Fetch("https://api.spotify.com/v1/me/top/tracks?limit=20&time_range=medium_term");
         var trackIds  = new List<string>();
         if (tracksDoc?.RootElement.TryGetProperty("items", out var tItems) == true)
@@ -668,9 +734,8 @@ public class IndexModel : PageModel
             }
         }
 
-        // Top artists → genres + names (fetch all 3 ranges for max coverage)
-        var genreSet    = new HashSet<string>();
-        var topArtists  = new List<string>();
+        var genreSet      = new HashSet<string>();
+        var topArtists    = new List<string>();
         var auraArtistIds = new List<string>();
         foreach (var range in new[] { "medium_term", "short_term", "long_term" })
         {
@@ -689,7 +754,6 @@ public class IndexModel : PageModel
             if (genreSet.Count > 0) break;
         }
 
-        // Batch-fetch full artist objects if top-artists returned no genres
         if (genreSet.Count == 0 && auraArtistIds.Count > 0)
         {
             foreach (var batch in auraArtistIds.Distinct().Take(50).Chunk(50))
@@ -705,7 +769,6 @@ public class IndexModel : PageModel
 
         bool HasG(params string[] terms) => genreSet.Any(g => terms.Any(t => g.Contains(t)));
 
-        // When audio features API is unavailable, derive approximate values from genre keywords
         if (!audioFeaturesWorked)
         {
             if      (HasG("metal","hardcore","thrash","death","black metal","deathcore","metalcore")) { avgEnergy=0.92; avgValence=0.18; avgDance=0.28; avgAcoustic=0.04; }
@@ -726,12 +789,10 @@ public class IndexModel : PageModel
             else if (HasG("classical","orchestral","baroque","neoclassical","piano","chamber"))        { avgEnergy=0.22; avgValence=0.50; avgDance=0.28; avgAcoustic=0.72; }
         }
 
-        // Variance → chaos measure
         double[] fv    = { avgEnergy, avgValence, avgDance, avgAcoustic };
         double   fmean = fv.Average();
         double   chaos = Math.Sqrt(fv.Select(v => (v - fmean) * (v - fmean)).Average());
 
-        // Aura scores (audio features are primary; genre boosts are secondary)
         var sc = new Dictionary<string, double>
         {
             ["midnight"] = (1 - avgEnergy) * 2 + avgAcoustic * 2 + (1 - avgValence) * 2,
@@ -744,7 +805,6 @@ public class IndexModel : PageModel
             ["social"]   = avgValence * 3 + avgDance * 2,
         };
 
-        // Genre keyword boosts — weighted higher when audio features unavailable
         double boost = audioFeaturesWorked ? 2.0 : 5.0;
         if (HasG("indie","alternative","emo","bedroom","sad","shoegaze","dream pop","darkwave","goth","post-punk","emo rap","midwest emo","sad rap","slowcore")) sc["midnight"] += boost;
         if (HasG("edm","electronic","dance","techno","house","dubstep","trance","bass","dnb","drum and bass","big room","hardstyle","future bass","club","rave"))  sc["neon"]     += boost;
@@ -821,8 +881,8 @@ public class IndexModel : PageModel
             sb2.Append("</div></div>");
         }
 
-        var rawLine = aline.Replace("&rsquo;", "'").Replace("&mdash;", "—")
-                          .Replace("&amp;", "&").Replace("&ldquo;", "\"").Replace("&rdquo;", "\"");
+        var rawLine   = aline.Replace("&rsquo;", "'").Replace("&mdash;", "—")
+                             .Replace("&amp;", "&").Replace("&ldquo;", "\"").Replace("&rdquo;", "\"");
         var shareText = $"My music aura is {aname}. {rawLine} — analyzed by QUEUEDUP";
         sb2.Append($@"<button class=""aura-share-btn"" data-share=""{WebUtility.HtmlEncode(shareText)}"" onclick=""qdCopyAura(this)"">COPY AURA</button>");
         sb2.Append("</div>");
@@ -868,6 +928,14 @@ public class IndexModel : PageModel
         if (change > 0) return $"<span class=\"stat-change up\">▲{change}</span>";
         if (change < 0) return $"<span class=\"stat-change down\">▼{Math.Abs(change)}</span>";
         return "<span class=\"stat-change same\">—</span>";
+    }
+
+    private static int GetRankChange(List<string> prevList, string name, int currentIndex)
+    {
+        if (prevList.Count == 0) return int.MinValue;
+        var prevIndex = prevList.IndexOf(name);
+        if (prevIndex < 0) return int.MinValue;
+        return prevIndex - currentIndex;
     }
 
     private static string Capitalize(string s) =>
