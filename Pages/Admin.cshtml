@@ -1,0 +1,120 @@
+@page
+@model AdminModel
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>QUEUEDUP — Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: #0a0a0a; color: #f0f0f0; font-family: 'Space Mono', monospace; min-height: 100vh; }
+
+        .login-wrap {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; padding: 2rem;
+        }
+        .login-box {
+            border: 1px solid #222; padding: 2.5rem; width: 100%; max-width: 360px;
+        }
+        .login-title { font-size: 1rem; letter-spacing: 0.2em; margin-bottom: 1.5rem; color: #c8f135; }
+        .login-input {
+            width: 100%; background: #111; border: 1px solid #333; color: #f0f0f0;
+            padding: 0.75rem 1rem; font-family: inherit; font-size: 0.8rem;
+            letter-spacing: 0.05em; margin-bottom: 0.75rem; outline: none;
+        }
+        .login-input:focus { border-color: #c8f135; }
+        .login-btn {
+            width: 100%; background: #c8f135; color: #000; border: none;
+            padding: 0.75rem; font-family: inherit; font-size: 0.75rem;
+            font-weight: 700; letter-spacing: 0.15em; cursor: pointer;
+        }
+        .login-btn:hover { opacity: 0.85; }
+        .login-error { color: #ff3cac; font-size: 0.7rem; margin-top: 0.5rem; letter-spacing: 0.05em; }
+
+        .admin-wrap { padding: 3rem 4vw; max-width: 900px; margin: 0 auto; }
+        .admin-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2.5rem; }
+        .admin-title { font-size: 1.5rem; letter-spacing: 0.15em; }
+        .admin-count { color: #c8f135; font-size: 0.75rem; letter-spacing: 0.1em; }
+        .logout-btn {
+            background: none; border: 1px solid #333; color: #555; padding: 0.4rem 0.9rem;
+            font-family: inherit; font-size: 0.65rem; letter-spacing: 0.1em; cursor: pointer;
+        }
+        .logout-btn:hover { color: #f0f0f0; border-color: #555; }
+
+        table { width: 100%; border-collapse: collapse; }
+        thead tr { border-bottom: 1px solid #c8f135; }
+        th { font-size: 0.65rem; letter-spacing: 0.2em; color: #c8f135; padding: 0.5rem 1rem; text-align: left; }
+        tbody tr { border-bottom: 1px solid #1a1a1a; }
+        tbody tr:hover { background: #111; }
+        td { padding: 0.9rem 1rem; font-size: 0.75rem; letter-spacing: 0.05em; }
+        td.muted { color: #555; }
+        .empty { color: #555; font-size: 0.75rem; padding: 2rem 1rem; letter-spacing: 0.1em; }
+    </style>
+</head>
+<body>
+
+@if (!Model.Authenticated)
+{
+    <div class="login-wrap">
+        <div class="login-box">
+            <p class="login-title">/ ADMIN ACCESS</p>
+            <form method="post">
+                <input class="login-input" type="password" name="password" placeholder="PASSWORD" autofocus />
+                <button class="login-btn" type="submit">ENTER</button>
+                @if (Model.LoginFailed)
+                {
+                    <p class="login-error">INCORRECT PASSWORD</p>
+                }
+            </form>
+        </div>
+    </div>
+}
+else
+{
+    <div class="admin-wrap">
+        <div class="admin-header">
+            <div>
+                <p class="admin-title">EMAIL SIGNUPS</p>
+                <p class="admin-count">@Model.Emails.Count SUBSCRIBER@(Model.Emails.Count == 1 ? "" : "S")</p>
+            </div>
+            <form method="post" asp-page-handler="Logout">
+                <button class="logout-btn" type="submit">LOGOUT</button>
+            </form>
+        </div>
+
+        @if (Model.Emails.Count == 0)
+        {
+            <p class="empty">NO SIGNUPS YET</p>
+        }
+        else
+        {
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>EMAIL</th>
+                        <th>SIGNED UP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.Emails.Count; i++)
+                    {
+                        <tr>
+                            <td class="muted">@(i + 1)</td>
+                            <td>@Model.Emails[i].Email</td>
+                            <td class="muted">@Model.Emails[i].SignedUpAt.ToLocalTime().ToString("MMM d, yyyy — h:mm tt")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+</body>
+</html>

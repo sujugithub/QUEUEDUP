@@ -1,6 +1,11 @@
 ## Local secrets — never commit
 appsettings.Local.json
 
+## SQLite database (contains tokens + user emails — never commit)
+*.db
+*.db-shm
+*.db-wal
+
 ## Build output
 bin/
 obj/
